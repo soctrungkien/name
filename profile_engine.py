@@ -304,6 +304,7 @@ def render_format(template: str, base_name: str, weather, city: str, tz_str: str
         val_music_or_weather = weather_str
 
     res = template or "{base_name} | HH:mm - DD/MM/YYYY"
+    res = res.replace("\\n", "\n")
 
     # 1. Thay thế các thẻ dạng {tag}
     tags = [

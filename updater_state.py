@@ -39,9 +39,15 @@ class UpdaterState:
     def reload_config(self):
         """Tải lại biến môi trường từ .env"""
         load_dotenv(ENV_FILE, override=True)
+        bio_val = os.getenv("BIO_FORMAT", "{weather} ⏰ HH:mm")
+        if bio_val:
+            bio_val = bio_val.replace("\\n", "\n")
+        name_val = os.getenv("NAME_FORMAT", "{base_name} | HH:mm - DD/MM/YYYY")
+        if name_val:
+            name_val = name_val.replace("\\n", "\n")
         self.config = {
-            "API_ID": os.getenv("API_ID", "2040"),
-            "API_HASH": os.getenv("API_HASH", "b18441a1ff607e10a989891a5462e627"),
+            "API_ID": os.getenv("API_ID", "2040").strip(),
+            "API_HASH": os.getenv("API_HASH", "b18441a1ff607e10a989891a5462e627").strip(),
             "SESSION_STRING": os.getenv("SESSION_STRING", "").strip(),
             "SESSION_NAME": os.getenv("SESSION_NAME", "bot").strip(),
             "BOT_TOKEN": os.getenv("BOT_TOKEN", "").strip(),
@@ -52,17 +58,24 @@ class UpdaterState:
             "LASTFM_USERNAME": os.getenv("LASTFM_USERNAME", "").strip(),
             "BASE_NAME": os.getenv("BASE_NAME", "tên").strip(),
             "TIMEZONE": os.getenv("TIMEZONE", "Asia/Ho_Chi_Minh").strip(),
-            "NAME_FORMAT": os.getenv("NAME_FORMAT", "{base_name} | HH:mm - DD/MM/YYYY").strip(),
-            "BIO_FORMAT": os.getenv("BIO_FORMAT", "{weather} ⏰ HH:mm").strip(),
+            "NAME_FORMAT": name_val.strip(),
+            "BIO_FORMAT": bio_val.strip(),
             "LANGUAGE": os.getenv("LANGUAGE", "vi").strip().lower()
         }
 
     def update_config(self, updates: dict):
-        """Cập nhật cấu hình vào file .env và nạp lại"""
+        """Cập nhật cấu hình vào file .env và nạp lại, bảo toàn dấu # và ký tự đặc biệt"""
         lines = []
         if os.path.exists(ENV_FILE):
             with open(ENV_FILE, "r", encoding="utf-8") as f:
                 lines = f.readlines()
+
+        def format_env_val(v) -> str:
+            if v is None:
+                return '""'
+            s = str(v).replace("\r", "")
+            s = s.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n")
+            return f'"{s}"'
 
         handled = set()
         new_lines = []
@@ -72,14 +85,14 @@ class UpdaterState:
                 k, _ = stripped.split("=", 1)
                 k = k.strip()
                 if k in updates:
-                    new_lines.append(f"{k}={updates[k]}\n")
+                    new_lines.append(f"{k}={format_env_val(updates[k])}\n")
                     handled.add(k)
                     continue
             new_lines.append(line)
 
         for k, v in updates.items():
             if k not in handled:
-                new_lines.append(f"{k}={v}\n")
+                new_lines.append(f"{k}={format_env_val(v)}\n")
 
         with open(ENV_FILE, "w", encoding="utf-8") as f:
             f.writelines(new_lines)

@@ -50,17 +50,23 @@ DEFAULT_CONFIG = {
     "LASTFM_API_KEY": "b25b959554ed76058ac220b7b2e0a026"
 }
 
+def format_env_val(v) -> str:
+    if v is None:
+        return '""'
+    s = str(v).replace("\r", "")
+    s = s.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n")
+    return f'"{s}"'
+
 def load_env() -> dict:
     config = DEFAULT_CONFIG.copy()
     if not os.path.exists(ENV_FILE):
         return config
     try:
-        with open(ENV_FILE, "r", encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if line and not line.startswith("#") and "=" in line:
-                    k, v = line.split("=", 1)
-                    config[k.strip()] = v.strip()
+        from dotenv import dotenv_values
+        vals = dotenv_values(ENV_FILE)
+        for k, v in vals.items():
+            if v is not None:
+                config[k] = v.replace("\\n", "\n")
     except Exception as e:
         print(f"{RED}[Lỗi khi đọc .env]: {e}{RESET}")
     return config
@@ -79,14 +85,14 @@ def save_env(updates: dict):
             k, _ = stripped.split("=", 1)
             k = k.strip()
             if k in updates:
-                new_lines.append(f"{k}={updates[k]}\n")
+                new_lines.append(f"{k}={format_env_val(updates[k])}\n")
                 handled.add(k)
                 continue
         new_lines.append(line)
 
     for k, v in updates.items():
         if k not in handled:
-            new_lines.append(f"{k}={v}\n")
+            new_lines.append(f"{k}={format_env_val(v)}\n")
 
     with open(ENV_FILE, "w", encoding="utf-8") as f:
         f.writelines(new_lines)

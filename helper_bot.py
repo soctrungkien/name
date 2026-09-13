@@ -348,7 +348,7 @@ def format_bio_preview_card(lang: str = None):
 
 def register_userbot_handlers(client: TelegramClient):
     """Đăng ký các lệnh tự điều khiển trên Userbot (.status, .name, .update, ...)"""
-    @client.on(events.NewMessage(outgoing=True, pattern=r"^\.(help|status|update|name|city|pause|resume|nameformat|bioformat|lastfm|music|bio|previewbio|preview|weather|lang)(?:\s+(.*))?$"))
+    @client.on(events.NewMessage(outgoing=True, pattern=r"^\.(help|status|update|name|setname|basename|city|pause|resume|nameformat|setnameformat|bioformat|setbio|lastfm|music|bio|previewbio|preview|weather|lang)(?:\s+([\s\S]+))?$"))
     async def userbot_command_handler(event):
         cmd = event.pattern_match.group(1).lower()
         arg = (event.pattern_match.group(2) or "").strip()
@@ -361,7 +361,7 @@ def register_userbot_handlers(client: TelegramClient):
                     "━━━━━━━━━━━━━━━━━━━━━\n"
                     "• <code>.name &lt;new name&gt;</code> : Change BASE_NAME (e.g. <code>.name HzzMonet</code>)\n"
                     "• <code>.nameformat &lt;fmt&gt;</code> : Change name format (e.g. <code>.nameformat {base_name} | HH:mm - DD/MM/YYYY</code>)\n"
-                    "• <code>.bioformat &lt;fmt&gt;</code> : Change bio format (e.g. <code>.bioformat {music_or_weather} ⏰ HH:mm</code>)\n"
+                    "• <code>.bio &lt;fmt&gt;</code> / <code>.bioformat &lt;fmt&gt;</code> : Change bio format (e.g. <code>.bio {weather} ⏰ HH:mm</code>)\n"
                     "• <code>.bio</code> / <code>.previewbio</code> : Bio preview & 70-character limit check\n"
                     "• <code>.weather</code> : View detailed weather info\n"
                     "• <code>.preview</code> : Preview Name & Bio\n"
@@ -382,7 +382,7 @@ def register_userbot_handlers(client: TelegramClient):
                     "━━━━━━━━━━━━━━━━━━━━━\n"
                     "• <code>.name &lt;tên mới&gt;</code> : Đổi BASE_NAME (Ví dụ: <code>.name HzzMonet</code>)\n"
                     "• <code>.nameformat &lt;mẫu&gt;</code> : Đổi định dạng tên (Ví dụ: <code>.nameformat {base_name} | HH:mm - DD/MM/YYYY</code>)\n"
-                    "• <code>.bioformat &lt;mẫu&gt;</code> : Đổi định dạng bio (Ví dụ: <code>.bioformat {music_or_weather} ⏰ HH:mm</code>)\n"
+                    "• <code>.bio &lt;mẫu&gt;</code> / <code>.bioformat &lt;mẫu&gt;</code> : Đổi định dạng bio (Ví dụ: <code>.bio {weather} ⏰ HH:mm</code>)\n"
                     "• <code>.bio</code> / <code>.previewbio</code> : Xem trước Bio & kiểm tra độ dài 70 ký tự\n"
                     "• <code>.weather</code> : Xem chi tiết thời tiết (nhiệt độ, độ ẩm, gió, bình minh/hoàng hôn)\n"
                     "• <code>.preview</code> : Xem trước Tên và Bio hiện tại\n"
@@ -420,8 +420,17 @@ def register_userbot_handlers(client: TelegramClient):
             state.trigger_update()
             await event.edit("🔄 <i>Đã gửi yêu cầu cập nhật profile ngay lập tức...</i>", parse_mode="html")
 
-        elif cmd in ("previewbio", "bio"):
-            await event.edit(format_bio_preview_card(), parse_mode="html")
+        elif cmd in ("previewbio", "bio", "setbio", "bioformat"):
+            if arg:
+                state.update_config({"BIO_FORMAT": arg})
+                state.trigger_update()
+                _, p_bio = generate_preview()
+                if cur_lang == "en":
+                    await event.edit(f"✅ <i>Updated BIO_FORMAT!</i>\n• <b>Pattern:</b> <code>{arg}</code>\n• <b>Preview Bio:</b> <code>{p_bio}</code> ({len(p_bio)}/70)", parse_mode="html")
+                else:
+                    await event.edit(f"✅ <i>Đã đổi BIO_FORMAT!</i>\n• <b>Mẫu:</b> <code>{arg}</code>\n• <b>Bio hiển thị mới:</b> <code>{p_bio}</code> ({len(p_bio)}/70 ký tự)", parse_mode="html")
+            else:
+                await event.edit(format_bio_preview_card(cur_lang), parse_mode="html")
 
         elif cmd == "preview":
             p_name, p_bio = generate_preview()
@@ -439,32 +448,31 @@ def register_userbot_handlers(client: TelegramClient):
         elif cmd == "weather":
             await event.edit(format_weather_card(), parse_mode="html")
 
-        elif cmd == "name":
+        elif cmd in ("name", "setname", "basename"):
             if not arg:
-                await event.edit("⚠️ <i>Vui lòng nhập tên mới. Ví dụ:</i> <code>.name HzzMonet</code>", parse_mode="html")
+                prompt = "⚠️ <i>Please enter new name. Example:</i> <code>.name HzzMonet</code>" if cur_lang == "en" else "⚠️ <i>Vui lòng nhập tên mới. Ví dụ:</i> <code>.name HzzMonet</code>"
+                await event.edit(prompt, parse_mode="html")
                 return
             state.update_config({"BASE_NAME": arg})
             state.trigger_update()
             p_name, _ = generate_preview()
-            await event.edit(f"✅ <i>Đã đổi BASE_NAME thành:</i> <b>{arg}</b>\n• <b>Tên hiển thị mới:</b> <code>{p_name}</code>", parse_mode="html")
+            if cur_lang == "en":
+                await event.edit(f"✅ <i>Changed BASE_NAME to:</i> <b>{arg}</b>\n• <b>Preview Name:</b> <code>{p_name}</code> ({len(p_name)}/64)", parse_mode="html")
+            else:
+                await event.edit(f"✅ <i>Đã đổi BASE_NAME thành:</i> <b>{arg}</b>\n• <b>Tên hiển thị mới:</b> <code>{p_name}</code> ({len(p_name)}/64 ký tự)", parse_mode="html")
 
-        elif cmd == "nameformat":
+        elif cmd in ("nameformat", "setnameformat"):
             if not arg:
-                await event.edit("⚠️ <i>Vui lòng nhập mẫu. Ví dụ:</i> <code>.nameformat {base_name} | HH:mm - DD/MM/YYYY</code>", parse_mode="html")
+                prompt = "⚠️ <i>Please enter pattern. Example:</i> <code>.nameformat {base_name} | HH:mm - DD/MM/YYYY</code>" if cur_lang == "en" else "⚠️ <i>Vui lòng nhập mẫu. Ví dụ:</i> <code>.nameformat {base_name} | HH:mm - DD/MM/YYYY</code>"
+                await event.edit(prompt, parse_mode="html")
                 return
             state.update_config({"NAME_FORMAT": arg})
             state.trigger_update()
             p_name, _ = generate_preview()
-            await event.edit(f"✅ <i>Đã đổi NAME_FORMAT!</i>\n• <b>Tên hiển thị:</b> <code>{p_name}</code>", parse_mode="html")
-
-        elif cmd == "bioformat":
-            if not arg:
-                await event.edit("⚠️ <i>Vui lòng nhập mẫu bio. Ví dụ:</i> <code>.bioformat {weather} ⏰ HH:mm</code>", parse_mode="html")
-                return
-            state.update_config({"BIO_FORMAT": arg})
-            state.trigger_update()
-            _, p_bio = generate_preview()
-            await event.edit(f"✅ <i>Đã đổi BIO_FORMAT!</i>\n• <b>Bio hiển thị:</b> <code>{p_bio}</code>", parse_mode="html")
+            if cur_lang == "en":
+                await event.edit(f"✅ <i>Updated NAME_FORMAT!</i>\n• <b>Pattern:</b> <code>{arg}</code>\n• <b>Preview Name:</b> <code>{p_name}</code> ({len(p_name)}/64)", parse_mode="html")
+            else:
+                await event.edit(f"✅ <i>Đã đổi NAME_FORMAT!</i>\n• <b>Mẫu:</b> <code>{arg}</code>\n• <b>Tên hiển thị mới:</b> <code>{p_name}</code> ({len(p_name)}/64 ký tự)", parse_mode="html")
 
         elif cmd == "lastfm":
             if not arg:
@@ -727,96 +735,155 @@ def register_bot_handlers(bot_client: TelegramClient):
         )
         await event.reply(msg, parse_mode="html", buttons=get_main_keyboard(lang))
 
-    @bot_client.on(events.NewMessage(pattern=r"^/(?:previewbio|bio)$"))
+    @bot_client.on(events.NewMessage(pattern=r"^/previewbio(?:@\w+)?$"))
     async def previewbio_cmd(event):
         if not is_admin(event.sender_id): return
-        await event.reply(format_bio_preview_card(), parse_mode="html", buttons=get_main_keyboard())
+        lang = state.config.get("LANGUAGE", "vi")
+        await event.reply(format_bio_preview_card(lang), parse_mode="html", buttons=get_main_keyboard(lang))
 
-    @bot_client.on(events.NewMessage(pattern=r"^/weather$"))
+    @bot_client.on(events.NewMessage(pattern=r"^/weather(?:@\w+)?$"))
     async def weather_cmd(event):
         if not is_admin(event.sender_id): return
-        await event.reply(format_weather_card(), parse_mode="html", buttons=get_main_keyboard())
+        lang = state.config.get("LANGUAGE", "vi")
+        await event.reply(format_weather_card(lang), parse_mode="html", buttons=get_main_keyboard(lang))
 
-    @bot_client.on(events.NewMessage(pattern=r"^/(?:setname|basename)(?:\s+(.*))?$"))
+    @bot_client.on(events.NewMessage(pattern=r"^/(?:setname|basename|name)(?:@\w+)?(?:\s+([\s\S]+))?$"))
     async def setname_cmd(event):
         if not is_admin(event.sender_id): return
         val = (event.pattern_match.group(1) or "").strip()
+        lang = state.config.get("LANGUAGE", "vi")
         if not val:
             user_sessions[event.sender_id] = {"action": "input_name"}
             curr = state.config.get("BASE_NAME", "tên")
-            await event.reply(
-                f"✏️ <b>ĐỔI TÊN CỐ ĐỊNH (BASE_NAME)</b>\n"
-                f"Tên hiện tại: <code>{curr}</code>\n\n"
-                f"👉 <b>Vui lòng gửi tên mới của bạn (Ví dụ: <code>HzzMonet</code>):</b>",
-                parse_mode="html",
-                buttons=get_cancel_keyboard()
-            )
+            if lang == "en":
+                prompt = (
+                    f"✏️ <b>CHANGE FIXED NAME (BASE_NAME)</b>\n"
+                    f"Current: <code>{curr}</code>\n\n"
+                    f"👉 <b>Please enter your new name (e.g. <code>HzzMonet</code>):</b>"
+                )
+            else:
+                prompt = (
+                    f"✏️ <b>ĐỔI TÊN CỐ ĐỊNH (BASE_NAME)</b>\n"
+                    f"Tên hiện tại: <code>{curr}</code>\n\n"
+                    f"👉 <b>Vui lòng gửi tên mới của bạn (Ví dụ: <code>HzzMonet</code>):</b>"
+                )
+            await event.reply(prompt, parse_mode="html", buttons=get_cancel_keyboard(lang))
             return
         state.update_config({"BASE_NAME": val})
         state.trigger_update()
         p_name, _ = generate_preview()
-        await event.reply(
-            f"✅ <b>Đã đổi BASE_NAME thành:</b> <code>{val}</code>\n"
-            f"• <b>Tên hiển thị mới:</b> <code>{p_name}</code> ({len(p_name)}/64 ký tự)\n\n"
-            f"<i>Profile Telegram đang được cập nhật...</i>",
-            parse_mode="html",
-            buttons=get_main_keyboard()
-        )
+        if lang == "en":
+            resp_msg = (
+                f"✅ <b>Changed BASE_NAME to:</b> <code>{val}</code>\n"
+                f"• <b>New display name:</b> <code>{p_name}</code> ({len(p_name)}/64)\n\n"
+                f"<i>Telegram Profile is updating...</i>"
+            )
+        else:
+            resp_msg = (
+                f"✅ <b>Đã đổi BASE_NAME thành:</b> <code>{val}</code>\n"
+                f"• <b>Tên hiển thị mới:</b> <code>{p_name}</code> ({len(p_name)}/64 ký tự)\n\n"
+                f"<i>Profile Telegram đang được cập nhật...</i>"
+            )
+        await event.reply(resp_msg, parse_mode="html", buttons=get_main_keyboard(lang))
 
-    @bot_client.on(events.NewMessage(pattern=r"^/(?:set)?nameformat(?:\s+(.*))?$"))
+    @bot_client.on(events.NewMessage(pattern=r"^/(?:set)?nameformat(?:@\w+)?(?:\s+([\s\S]+))?$"))
     async def nameformat_cmd(event):
         if not is_admin(event.sender_id): return
         val = (event.pattern_match.group(1) or "").strip()
+        lang = state.config.get("LANGUAGE", "vi")
         if not val:
             user_sessions[event.sender_id] = {"action": "input_fmt_name"}
-            msg = (
-                "🎨 <b>CÀI ĐẶT ĐỊNH DẠNG TÊN (NAME_FORMAT)</b>\n\n"
-                "Ví dụ mẫu:\n"
-                "• <code>{base_name} | HH:mm - DD/MM/YYYY</code>\n"
-                "• <code>HzzMonet | HH:mm - DD/MM/YYYY</code>\n"
-                "• <code>{base_name} | {thu}, DD/MM/YYYY - HH:mm</code>\n\n"
-                "👉 <b>Vui lòng gửi mẫu định dạng mới của bạn:</b>"
-            )
-            await event.reply(msg, parse_mode="html", buttons=get_cancel_keyboard())
+            if lang == "en":
+                prompt = (
+                    "🎨 <b>CUSTOMIZE NAME FORMAT (NAME_FORMAT)</b>\n\n"
+                    "Examples:\n"
+                    "• <code>{base_name} | HH:mm - DD/MM/YYYY</code>\n"
+                    "• <code>HzzMonet | HH:mm - DD/MM/YYYY</code>\n"
+                    "• <code>{base_name} | {thu}, DD/MM/YYYY - HH:mm</code>\n\n"
+                    "👉 <b>Please send your custom name format:</b>"
+                )
+            else:
+                prompt = (
+                    "🎨 <b>CÀI ĐẶT ĐỊNH DẠNG TÊN (NAME_FORMAT)</b>\n\n"
+                    "Ví dụ mẫu:\n"
+                    "• <code>{base_name} | HH:mm - DD/MM/YYYY</code>\n"
+                    "• <code>HzzMonet | HH:mm - DD/MM/YYYY</code>\n"
+                    "• <code>{base_name} | {thu}, DD/MM/YYYY - HH:mm</code>\n\n"
+                    "👉 <b>Vui lòng gửi mẫu định dạng mới của bạn:</b>"
+                )
+            await event.reply(prompt, parse_mode="html", buttons=get_cancel_keyboard(lang))
             return
         state.update_config({"NAME_FORMAT": val})
         state.trigger_update()
         p_name, _ = generate_preview()
-        await event.reply(
-            f"✅ <b>Đã cập nhật định dạng tên!</b>\n\n"
-            f"• <b>Mẫu:</b> <code>{val}</code>\n"
-            f"• <b>Tên hiển thị mới:</b> <code>{p_name}</code> ({len(p_name)}/64 ký tự)\n\n"
-            f"<i>Profile Telegram đang được cập nhật...</i>",
-            parse_mode="html",
-            buttons=get_main_keyboard()
-        )
+        if lang == "en":
+            resp_msg = (
+                f"✅ <b>Updated Name format!</b>\n\n"
+                f"• <b>Format:</b> <code>{val}</code>\n"
+                f"• <b>Preview Name:</b> <code>{p_name}</code> ({len(p_name)}/64)\n\n"
+                f"<i>Telegram Profile is updating...</i>"
+            )
+        else:
+            resp_msg = (
+                f"✅ <b>Đã cập nhật định dạng tên!</b>\n\n"
+                f"• <b>Mẫu:</b> <code>{val}</code>\n"
+                f"• <b>Tên hiển thị mới:</b> <code>{p_name}</code> ({len(p_name)}/64 ký tự)\n\n"
+                f"<i>Profile Telegram đang được cập nhật...</i>"
+            )
+        await event.reply(resp_msg, parse_mode="html", buttons=get_main_keyboard(lang))
 
-    @bot_client.on(events.NewMessage(pattern=r"^/(?:set)?bioformat(?:\s+(.*))?$"))
+    @bot_client.on(events.NewMessage(pattern=r"^/(?:setbioformat|bioformat|setbio|bio)(?:@\w+)?(?:\s+([\s\S]+))?$"))
     async def bioformat_cmd(event):
         if not is_admin(event.sender_id): return
         val = (event.pattern_match.group(1) or "").strip()
+        cmd_word = event.raw_text.split()[0].lower().split("@")[0]
+        lang = state.config.get("LANGUAGE", "vi")
+
+        # Gõ /bio không có tham số -> Xem trước thẻ Bio
+        if not val and cmd_word == "/bio":
+            await event.reply(format_bio_preview_card(lang), parse_mode="html", buttons=get_main_keyboard(lang))
+            return
+
         if not val:
             user_sessions[event.sender_id] = {"action": "input_fmt_bio"}
-            msg = (
-                "📝 <b>CÀI ĐẶT ĐỊNH DẠNG TIỂU SỬ (BIO_FORMAT)</b>\n\n"
-                "Ví dụ mẫu:\n"
-                "• <code>{weather} ⏰ HH:mm</code>\n"
-                "• <code>📍 {city} | ⏰ HH:mm - DD/MM</code>\n\n"
-                "👉 <b>Vui lòng gửi mẫu bio mới của bạn:</b>"
-            )
-            await event.reply(msg, parse_mode="html", buttons=get_cancel_keyboard())
+            if lang == "en":
+                msg = (
+                    "📝 <b>ENTER NEW BIO FORMAT (BIO_FORMAT)</b>\n\n"
+                    "Examples:\n"
+                    "• <code>{weather} ⏰ HH:mm</code>\n"
+                    "• <code>📍 {city} | ⏰ HH:mm</code>\n"
+                    "• <code>{music_or_weather} ⏰ HH:mm</code>\n\n"
+                    "👉 <b>Please send your custom bio format:</b>"
+                )
+            else:
+                msg = (
+                    "📝 <b>CÀI ĐẶT ĐỊNH DẠNG TIỂU SỬ (BIO_FORMAT)</b>\n\n"
+                    "Ví dụ mẫu:\n"
+                    "• <code>{weather} ⏰ HH:mm</code>\n"
+                    "• <code>📍 {city} | ⏰ HH:mm - DD/MM</code>\n"
+                    "• <code>{music_or_weather} ⏰ HH:mm</code>\n\n"
+                    "👉 <b>Vui lòng gửi mẫu bio mới của bạn:</b>"
+                )
+            await event.reply(msg, parse_mode="html", buttons=get_cancel_keyboard(lang))
             return
         state.update_config({"BIO_FORMAT": val})
         state.trigger_update()
         _, p_bio = generate_preview()
-        await event.reply(
-            f"✅ <b>Đã cập nhật định dạng Bio!</b>\n\n"
-            f"• <b>Mẫu:</b> <code>{val}</code>\n"
-            f"• <b>Bio hiển thị mới:</b> <code>{p_bio}</code> ({len(p_bio)}/70 ký tự)\n\n"
-            f"<i>Profile Telegram đang được cập nhật...</i>",
-            parse_mode="html",
-            buttons=get_main_keyboard()
-        )
+        if lang == "en":
+            resp_msg = (
+                f"✅ <b>Updated Bio format!</b>\n\n"
+                f"• <b>Format:</b> <code>{val}</code>\n"
+                f"• <b>Preview Bio:</b> <code>{p_bio}</code> ({len(p_bio)}/70)\n\n"
+                f"<i>Telegram Profile is updating...</i>"
+            )
+        else:
+            resp_msg = (
+                f"✅ <b>Đã cập nhật định dạng Bio!</b>\n\n"
+                f"• <b>Mẫu:</b> <code>{val}</code>\n"
+                f"• <b>Bio hiển thị mới:</b> <code>{p_bio}</code> ({len(p_bio)}/70 ký tự)\n\n"
+                f"<i>Profile Telegram đang được cập nhật...</i>"
+            )
+        await event.reply(resp_msg, parse_mode="html", buttons=get_main_keyboard(lang))
 
     @bot_client.on(events.NewMessage(pattern=r"^/setcity(?:\s+(.*))?$"))
     async def setcity_cmd(event):
@@ -897,7 +964,7 @@ def register_bot_handlers(bot_client: TelegramClient):
     @bot_client.on(events.NewMessage)
     async def user_input_handler(event):
         if not is_admin(event.sender_id): return
-        if event.raw_text.startswith("/"): return
+        if event.raw_text.strip() == "/cancel": return
 
         sess = user_sessions.get(event.sender_id)
         if not sess: return
@@ -906,12 +973,51 @@ def register_bot_handlers(bot_client: TelegramClient):
         text = event.raw_text.strip()
         lang = state.config.get("LANGUAGE", "vi")
 
+        # Loại bỏ tiền tố lệnh nếu người dùng vô tình gõ kèm trong chế độ hội thoại
+        if action == "input_name":
+            for pfx in ("/setname", "/basename", "/name", ".name"):
+                if text.lower().startswith(pfx):
+                    text = text[len(pfx):].strip()
+                    break
+        elif action == "input_fmt_name":
+            for pfx in ("/setnameformat", "/nameformat", ".nameformat"):
+                if text.lower().startswith(pfx):
+                    text = text[len(pfx):].strip()
+                    break
+        elif action == "input_fmt_bio":
+            for pfx in ("/setbioformat", "/bioformat", "/setbio", "/bio", ".bioformat", ".bio"):
+                if text.lower().startswith(pfx):
+                    text = text[len(pfx):].strip()
+                    break
+        elif action == "input_city":
+            for pfx in ("/setcity", "/city", ".city"):
+                if text.lower().startswith(pfx):
+                    text = text[len(pfx):].strip()
+                    break
+        elif action == "input_lastfm_user":
+            for pfx in ("/lastfm", "/setlastfm", ".lastfm"):
+                if text.lower().startswith(pfx):
+                    text = text[len(pfx):].strip()
+                    break
+
         # 1. Đổi tên
         if action == "input_name":
             user_sessions.pop(event.sender_id, None)
             state.update_config({"BASE_NAME": text})
             state.trigger_update()
-            ack = f"✅ Updated <b>BASE_NAME</b>: <code>{text}</code>" if lang == "en" else f"✅ Đã cập nhật <b>BASE_NAME</b>: <code>{text}</code>"
+            p_name, _ = generate_preview()
+            if lang == "en":
+                ack = (
+                    f"✅ <b>Updated BASE_NAME:</b> <code>{text}</code>\n"
+                    f"• <b>Preview Name:</b> <code>{p_name}</code> ({len(p_name)}/64)\n\n"
+                    f"<i>Telegram Profile is updating automatically...</i>"
+                )
+            else:
+                ack = (
+                    f"✅ <b>Đã cập nhật BASE_NAME:</b> <code>{text}</code>\n"
+                    f"• <b>Tên xem trước:</b> <code>{p_name}</code> ({len(p_name)}/64 ký tự)\n\n"
+                    f"<i>Profile Telegram đang được cập nhật tự động...</i>"
+                )
             await event.reply(ack, parse_mode="html", buttons=get_settings_keyboard(lang))
 
         # 2. Đổi thành phố
@@ -982,14 +1088,38 @@ def register_bot_handlers(bot_client: TelegramClient):
             user_sessions.pop(event.sender_id, None)
             state.update_config({"NAME_FORMAT": text})
             state.trigger_update()
-            ack = f"✅ Saved <b>NAME_FORMAT</b>: <code>{text}</code>" if lang == "en" else f"✅ Đã lưu <b>NAME_FORMAT</b>: <code>{text}</code>"
+            p_name, _ = generate_preview()
+            if lang == "en":
+                ack = (
+                    f"✅ <b>Saved NAME_FORMAT:</b> <code>{text}</code>\n"
+                    f"• <b>Preview Name:</b> <code>{p_name}</code> ({len(p_name)}/64)\n\n"
+                    f"<i>Telegram Profile is updating automatically...</i>"
+                )
+            else:
+                ack = (
+                    f"✅ <b>Đã lưu NAME_FORMAT:</b> <code>{text}</code>\n"
+                    f"• <b>Tên xem trước:</b> <code>{p_name}</code> ({len(p_name)}/64 ký tự)\n\n"
+                    f"<i>Profile Telegram đang được cập nhật tự động...</i>"
+                )
             await event.reply(ack, parse_mode="html", buttons=get_format_keyboard(lang))
 
         elif action == "input_fmt_bio":
             user_sessions.pop(event.sender_id, None)
             state.update_config({"BIO_FORMAT": text})
             state.trigger_update()
-            ack = f"✅ Saved <b>BIO_FORMAT</b>: <code>{text}</code>" if lang == "en" else f"✅ Đã lưu <b>BIO_FORMAT</b>: <code>{text}</code>"
+            _, p_bio = generate_preview()
+            if lang == "en":
+                ack = (
+                    f"✅ <b>Saved BIO_FORMAT:</b> <code>{text}</code>\n"
+                    f"• <b>Preview Bio:</b> <code>{p_bio}</code> ({len(p_bio)}/70)\n\n"
+                    f"<i>Telegram Profile is updating automatically...</i>"
+                )
+            else:
+                ack = (
+                    f"✅ <b>Đã lưu BIO_FORMAT:</b> <code>{text}</code>\n"
+                    f"• <b>Bio xem trước:</b> <code>{p_bio}</code> ({len(p_bio)}/70 ký tự)\n\n"
+                    f"<i>Profile Telegram đang được cập nhật tự động...</i>"
+                )
             await event.reply(ack, parse_mode="html", buttons=get_format_keyboard(lang))
 
         # 7. QUY TRÌNH ĐĂNG NHẬP TELEGRAM (LOGIN WIZARD)
