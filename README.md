@@ -1,6 +1,21 @@
 # Telegram Name & Bio Auto Updater + Helper Bot
 
-Hệ thống tự động cập nhật tên và bio (tiểu sử) tài khoản Telegram theo thời gian thực, thời tiết chi tiết đa nguồn và âm nhạc đang nghe (**Last.fm / Spotify / Apple Music**), tích hợp **Helper Bot** để điều khiển, xem trước bio và cấu hình từ xa qua nút bấm trực quan.
+Hệ thống tự động cập nhật tên và bio (tiểu sử) tài khoản Telegram theo thời gian thực, thời tiết chi tiết đa nguồn và âm nhạc đang nghe (**Last.fm / Spotify / Apple Music**), tích hợp **Helper Bot** để điều khiển, xem trước bio, hỗ trợ song ngữ **Tiếng Việt 🇻🇳 & English 🇬🇧**, và cấu hình từ xa qua nút bấm trực quan.
+
+---
+
+## 🌐 Hỗ trợ Đa Ngôn Ngữ / Bilingual Support (Vietnamese & English)
+
+Hệ thống hỗ trợ chuyển đổi linh hoạt giữa **Tiếng Việt** và **English**:
+- **Chuyển đổi tức thì**:
+  - Gõ lệnh Helper Bot: `/lang en` hoặc `/lang vi` (hoặc `/lang` để mở menu chọn).
+  - Gõ lệnh Userbot: `.lang en` hoặc `.lang vi`.
+  - Bấm nút **[🌐 Ngôn ngữ / Language]** trong Menu chính hoặc Menu Cài đặt của Helper Bot.
+- **Tự động dịch toàn diện**:
+  - Toàn bộ giao diện Bảng điều khiển (Dashboard), Menu Cài đặt, Thông báo, Hướng dẫn `/help`.
+  - Tự động địa phương hóa mô tả Thời tiết (OpenWeatherMap & wttr.in theo ngôn ngữ đã chọn).
+  - Tự động địa phương hóa thứ trong tuần: `{thu}`, `{thu_ngan}` (Tiếng Việt) và `{day}`, `{day_short}`, `{day_name}` (English).
+  - Lưu tùy chọn ngôn ngữ vào `LANGUAGE=vi` hoặc `LANGUAGE=en` trong `.env`.
 
 ---
 
@@ -67,7 +82,9 @@ Hệ thống hỗ trợ tùy biến định dạng tên và bio linh hoạt vớ
 | `YYYY` / `{YYYY}` | Năm 4 chữ số | `2026` |
 | `YY` / `{YY}` | Năm 2 chữ số | `26` |
 | `{thu}` | Thứ tiếng Việt | `Thứ Bảy` |
-| `{thu_ngan}` | Thứ ngắn | `T7` |
+| `{thu_ngan}` | Thứ ngắn tiếng Việt | `T7` |
+| `{day}` / `{day_name}` | Thứ tiếng Anh (English weekday) | `Saturday` |
+| `{day_short}` | Thứ ngắn tiếng Anh (English short day) | `Sat` |
 | `{city}` | Tên tỉnh / thành phố | `Bac Ninh` |
 | `{weather}` | Chuỗi thời tiết tự động cân đối cho Bio | `📍 Bac Ninh` |
 | `{weather_short}` | Thời tiết siêu ngắn (Icon + Nhiệt độ) | `⛅ 28°C` |
@@ -94,8 +111,10 @@ Hệ thống hỗ trợ tùy biến định dạng tên và bio linh hoạt vớ
 - `📍 {city} • {weather_short} ⏰ HH:mm` ➡️ **📍 Bac Ninh • ⛅ 28°C ⏰ 21:09**
 - `{music_or_weather} | 📍 {city}` ➡️ **🎧 Blinding Lights - The Weeknd | 📍 Bac Ninh**
 - `{base_name} | {thu}, DD/MM/YYYY - HH:mm` ➡️ **HzzMonet | Thứ Bảy, 12/09/2026 - 21:09**
+- `{base_name} | {day}, DD/MM/YYYY - HH:mm` ➡️ **HzzMonet | Saturday, 12/09/2026 - 21:09**
 - `{base_name} ⏰ HH:mm (DD/MM)` ➡️ **HzzMonet ⏰ 21:09 (12/09)**
 - `{base_name} | {thu_ngan} • HH:mm` ➡️ **HzzMonet | T7 • 21:09**
+- `{base_name} | {day_short} • HH:mm` ➡️ **HzzMonet | Sat • 21:09**
 
 ---
 
@@ -107,10 +126,12 @@ Khi nhắn tin riêng với bot của bạn trên Telegram:
   - 👁️ **Xem trước Profile**: Kiểm tra hiển thị cả Tên & Bio.
   - 📝 **Xem trước Bio**: Kiểm tra chuyên sâu độ dài 70 ký tự và kịch bản nhạc/thời tiết.
   - 🌤️ **Thời tiết chi tiết**: Mở thẻ thông số thời tiết đầy đủ của thành phố.
+  - 🌐 **Ngôn ngữ**: Đổi giao diện sang Tiếng Việt 🇻🇳 hoặc English 🇬🇧.
   - ✏️ **Đổi tên (BASE_NAME)**: Nhập tên mới bất kỳ lúc nào.
   - 🎵 **Last.fm**: Cài đặt username Last.fm để nghe nhạc.
   - 🎨 **Mẫu hiển thị (Format)**: Bấm chọn các mẫu có sẵn (Mẫu 1-8) hoặc tự nhập mẫu riêng.
   - ⏸️/▶️ **Tạm dừng / Tiếp tục**: Tạm ngừng hoặc kích hoạt lại auto-update.
+- `/lang <en|vi>`: Đổi ngôn ngữ bot (Tiếng Việt / English).
 - `/previewbio` (hoặc `/bio`): Mở thẻ phân tích và xem trước tiểu sử.
 - `/weather`: Xem thông tin thời tiết chi tiết.
 - `/lastfm <username>`: Kết nối tài khoản Last.fm.
@@ -125,6 +146,7 @@ Khi nhắn tin riêng với bot của bạn trên Telegram:
 
 ## ⚡ Tự gõ lệnh trên Userbot (Không cần Bot Token)
 Gõ trực tiếp trong **Saved Messages** hoặc bất kỳ đoạn chat nào:
+- `.lang <en|vi>` : Đổi ngôn ngữ (Tiếng Việt / English).
 - `.bio` / `.previewbio` : Xem trước Bio & kiểm tra độ dài 70 ký tự.
 - `.weather` : Xem chi tiết thời tiết (nhiệt độ, cảm giác thực tế, độ ẩm, gió, bình minh...).
 - `.preview` : Xem trước Tên và Bio hiện tại.

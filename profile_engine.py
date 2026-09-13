@@ -42,16 +42,23 @@ def get_time(timezone: str):
         now = datetime.now(tz)
     except Exception:
         now = datetime.now()
-    weekdays = ["Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy", "Chủ Nhật"]
+    lang = state.config.get("LANGUAGE", "vi")
+    if lang == "en":
+        weekdays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+    else:
+        weekdays = ["Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy", "Chủ Nhật"]
     return weekdays[now.weekday()], now.strftime("%d/%m"), now.strftime("%H:%M")
 
-async def get_detailed_weather(city: str, weather_api_key: str, timezone: str) -> dict:
-    """Lấy thông tin thời tiết chi tiết từ OpenWeatherMap hoặc wttr.in fallback"""
+async def get_detailed_weather(city: str, weather_api_key: str, timezone: str, lang: str = None) -> dict:
+    """Lấy thông tin thời tiết chi tiết từ OpenWeatherMap hoặc wttr.in fallback (hỗ trợ vi/en)"""
     import urllib.parse
+    lang = lang or state.config.get("LANGUAGE", "vi")
+    lang_code = "en" if lang == "en" else "vi"
+    feels_label = "Feels like" if lang_code == "en" else "Cảm nhận"
 
     # 1. Thử qua OpenWeatherMap nếu có API Key
     if weather_api_key and weather_api_key != "lấy ở openweathermap":
-        url = f"http://api.openweathermap.org/data/2.5/weather?q={urllib.parse.quote(city)}&appid={weather_api_key}&units=metric&lang=vi"
+        url = f"http://api.openweathermap.org/data/2.5/weather?q={urllib.parse.quote(city)}&appid={weather_api_key}&units=metric&lang={lang_code}"
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get(url, timeout=aiohttp.ClientTimeout(total=6)) as resp:
@@ -70,7 +77,7 @@ async def get_detailed_weather(city: str, weather_api_key: str, timezone: str) -
                         weather_short = f"{icon} {temp}°C"
                         weather_medium = f"{icon} {city} {temp}°C | 💦{humidity}%"
                         weather_full = f"{icon} {city} {temp}°C | 💦{humidity}% 💨{wind}m/s"
-                        weather_detail = f"{icon} {city}: {temp}°C (Cảm nhận {feels}°C), {desc} | 💦{humidity}% 💨{wind}m/s | 🌅{sunrise} 🌇{sunset}"
+                        weather_detail = f"{icon} {city}: {temp}°C ({feels_label} {feels}°C), {desc} | 💦{humidity}% 💨{wind}m/s | 🌅{sunrise} 🌇{sunset}"
 
                         return {
                             "city": city,
@@ -93,9 +100,9 @@ async def get_detailed_weather(city: str, weather_api_key: str, timezone: str) -
         except Exception as e:
             print(f"[⚠️] OpenWeatherMap lỗi ({e}), chuyển sang wttr.in...")
 
-    # 2. Dự phòng thông minh qua wttr.in (không cần API key, hỗ trợ tiếng Việt)
+    # 2. Dự phòng thông minh qua wttr.in (không cần API key, hỗ trợ vi/en)
     try:
-        url = f"https://wttr.in/{urllib.parse.quote(city)}?format=j1&lang=vi"
+        url = f"https://wttr.in/{urllib.parse.quote(city)}?format=j1&lang={lang_code}"
         headers = {"User-Agent": "curl/7.68.0"}
         async with aiohttp.ClientSession() as session:
             async with session.get(url, headers=headers, timeout=aiohttp.ClientTimeout(total=6)) as resp:
@@ -111,7 +118,10 @@ async def get_detailed_weather(city: str, weather_api_key: str, timezone: str) -
 
                     lang_vi = curr.get('lang_vi', [{}])[0].get('value', '').strip()
                     en_desc = curr.get('weatherDesc', [{}])[0].get('value', '').strip()
-                    desc = (lang_vi or en_desc or 'Bình thường').capitalize()
+                    if lang_code == "en":
+                        desc = (en_desc or lang_vi or 'Clear').capitalize()
+                    else:
+                        desc = (lang_vi or en_desc or 'Bình thường').capitalize()
                     icon = get_weather_icon(desc or en_desc)
 
                     astronomy = data.get('weather', [{}])[0].get('astronomy', [{}])[0]
@@ -130,7 +140,7 @@ async def get_detailed_weather(city: str, weather_api_key: str, timezone: str) -
                     weather_short = f"{icon} {temp}°C"
                     weather_medium = f"{icon} {city} {temp}°C | 💦{humidity}%"
                     weather_full = f"{icon} {city} {temp}°C | 💦{humidity}% 💨{wind}m/s"
-                    weather_detail = f"{icon} {city}: {temp}°C (Cảm nhận {feels}°C), {desc} | 💦{humidity}% 💨{wind}m/s | 🌅{sunrise} 🌇{sunset}"
+                    weather_detail = f"{icon} {city}: {temp}°C ({feels_label} {feels}°C), {desc} | 💦{humidity}% 💨{wind}m/s | 🌅{sunrise} 🌇{sunset}"
 
                     return {
                         "city": city,
@@ -154,6 +164,7 @@ async def get_detailed_weather(city: str, weather_api_key: str, timezone: str) -
         print(f"[⚠️] wttr.in lỗi: {e}")
 
     # 3. Fallback an toàn nếu cả 2 dịch vụ đều lỗi
+    fallback_desc = "No data" if lang_code == "en" else "Không có dữ liệu"
     return {
         "city": city,
         "temp": "--°C",
@@ -162,7 +173,7 @@ async def get_detailed_weather(city: str, weather_api_key: str, timezone: str) -
         "humidity": "--%",
         "wind": "--m/s",
         "pressure": "--",
-        "desc": "Không có dữ liệu",
+        "desc": fallback_desc,
         "icon": "📍",
         "sunrise": "--:--",
         "sunset": "--:--",
@@ -231,13 +242,21 @@ def render_format(template: str, base_name: str, weather, city: str, tz_str: str
         tz = pytz.timezone("Asia/Ho_Chi_Minh")
         now = datetime.now(tz)
 
-    weekdays = ["Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy", "Chủ Nhật"]
-    weekdays_short = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"]
-    weekdays_en = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+    lang = state.config.get("LANGUAGE", "vi")
+    weekdays_vi = ["Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy", "Chủ Nhật"]
+    weekdays_short_vi = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"]
+    weekdays_en = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+    weekdays_short_en = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+    months_en = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+    months_vi = ["Tháng 1", "Tháng 2", "Tháng 3", "Tháng 4", "Tháng 5", "Tháng 6", "Tháng 7", "Tháng 8", "Tháng 9", "Tháng 10", "Tháng 11", "Tháng 12"]
 
-    thu = weekdays[now.weekday()]
-    thu_short = weekdays_short[now.weekday()]
+    thu_vi = weekdays_vi[now.weekday()]
+    thu_short_vi = weekdays_short_vi[now.weekday()]
     day_en = weekdays_en[now.weekday()]
+    day_short_en = weekdays_short_en[now.weekday()]
+    thu = day_en if lang == "en" else thu_vi
+    thu_short = day_short_en if lang == "en" else thu_short_vi
+    month_name = months_en[now.month - 1] if lang == "en" else months_vi[now.month - 1]
 
     val_YYYY = now.strftime("%Y")
     val_YY = now.strftime("%y")
@@ -300,6 +319,9 @@ def render_format(template: str, base_name: str, weather, city: str, tz_str: str
         ("{thu}", thu),
         ("{thu_ngan}", thu_short),
         ("{day}", day_en),
+        ("{day_short}", day_short_en),
+        ("{day_name}", day_en if lang == "en" else thu_vi),
+        ("{month_name}", month_name),
         ("{ngay}", val_ngay),
         ("{gio}", val_gio),
         ("{gio12}", f"{val_hh}:{val_mm} {val_ampm}"),

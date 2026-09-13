@@ -53,7 +53,8 @@ class UpdaterState:
             "BASE_NAME": os.getenv("BASE_NAME", "tên").strip(),
             "TIMEZONE": os.getenv("TIMEZONE", "Asia/Ho_Chi_Minh").strip(),
             "NAME_FORMAT": os.getenv("NAME_FORMAT", "{base_name} | HH:mm - DD/MM/YYYY").strip(),
-            "BIO_FORMAT": os.getenv("BIO_FORMAT", "{weather} ⏰ HH:mm").strip()
+            "BIO_FORMAT": os.getenv("BIO_FORMAT", "{weather} ⏰ HH:mm").strip(),
+            "LANGUAGE": os.getenv("LANGUAGE", "vi").strip().lower()
         }
 
     def update_config(self, updates: dict):

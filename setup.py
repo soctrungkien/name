@@ -43,6 +43,7 @@ DEFAULT_CONFIG = {
     "CITY": "Bac Ninh",
     "BASE_NAME": "tên",
     "TIMEZONE": "Asia/Ho_Chi_Minh",
+    "LANGUAGE": "vi",
     "NAME_FORMAT": "{base_name} | HH:mm - DD/MM/YYYY",
     "BIO_FORMAT": "{weather} ⏰ HH:mm",
     "LASTFM_USERNAME": "",
@@ -350,8 +351,13 @@ def configure_display(config: dict) -> dict:
     in_tz = input(f"Múi giờ (TIMEZONE) [{curr_tz}]: ").strip()
     timezone = in_tz if in_tz else curr_tz
 
+    curr_lang = config.get("LANGUAGE", DEFAULT_CONFIG["LANGUAGE"])
+    print(f"\nNgôn ngữ hiển thị (LANGUAGE): vi = Tiếng Việt, en = English")
+    in_lang = input(f"Chọn ngôn ngữ (vi/en) [{curr_lang}]: ").strip().lower()
+    language = in_lang if in_lang in ("vi", "en") else curr_lang
+
     curr_nfmt = config.get("NAME_FORMAT", DEFAULT_CONFIG["NAME_FORMAT"])
-    print(f"\nCác từ khóa hỗ trợ: {{base_name}}, HH, mm, ss, DD, MM, YYYY, {{thu}}, {{city}}, {{music}}, {{music_or_weather}}")
+    print(f"\nCác từ khóa hỗ trợ: {{base_name}}, HH, mm, ss, DD, MM, YYYY, {{thu}}, {{day}}, {{city}}, {{music}}, {{music_or_weather}}")
     print("Ví dụ mẫu: {base_name} | HH:mm - DD/MM/YYYY hoặc {base_name} | {music_or_weather}")
     in_nfmt = input(f"Định dạng Tên (NAME_FORMAT) [{curr_nfmt}]: ").strip()
     name_format = in_nfmt if in_nfmt else curr_nfmt
@@ -365,6 +371,7 @@ def configure_display(config: dict) -> dict:
     return {
         "BASE_NAME": base_name,
         "TIMEZONE": timezone,
+        "LANGUAGE": language,
         "NAME_FORMAT": name_format,
         "BIO_FORMAT": bio_format
     }
