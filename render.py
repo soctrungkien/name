@@ -7,7 +7,7 @@ app = Quart(__name__)
 
 @app.route('/')
 async def home():
-    return "Bot is running", 200
+    return "Running", 200
 
 async def run_web():
     port = int(os.environ.get("PORT", 10000))
