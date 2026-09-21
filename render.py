@@ -1,26 +1,24 @@
 import os
-import threading
 import asyncio
-from flask import Flask
-from name import main as bot_main # Import hàm main từ file name.py của Hihi
+from quart import Quart
+from name import main as bot_main
 
-# 1. Flask Web Server
-app = Flask(__name__)
+app = Quart(__name__)
+
 @app.route('/')
-def home():
-    return "OK", 200
+async def home():
+    return "Bot is running", 200
 
-def run_web():
+async def run_web():
     port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
+    await app.run_task(host="0.0.0.0", port=port)
 
-# 2. Chạy bot
-def run_bot():
-    asyncio.run(bot_main())
+async def main():
+    # Chạy cả web và bot trong cùng một loop
+    await asyncio.gather(
+        run_web(),
+        bot_main()
+    )
 
 if __name__ == "__main__":
-    # Chạy Flask ở thread riêng
-    threading.Thread(target=run_web, daemon=True).start()
-    
-    # Chạy bot ở main thread
-    run_bot()
+    asyncio.run(main())
