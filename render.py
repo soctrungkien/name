@@ -1,5 +1,8 @@
 import os
 import asyncio
+
+asyncio.set_event_loop(asyncio.new_event_loop())
+
 from quart import Quart
 from name import main as name_main
 from afk import main as afk_main
